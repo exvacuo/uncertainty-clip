@@ -1,0 +1,14 @@
+# Pipeline check only. The four-image retrieval pool is not a quality benchmark.
+model = "ViT-B-32"
+output_dir = "runs/vit-b32-smoke"
+epochs = 1
+train_limit = 4
+validation_limit = 4
+batch_size = 2
+eval_batch_size = 4
+workers = 0
+warmup_steps = 0
+device = "cpu"
+precision = "fp32"
+log_every = 1
+cpu_threads = 2

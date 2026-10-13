@@ -4,3 +4,5 @@ __pycache__/
 .DS_Store
 /data/*
 !/data/.gitkeep
+/runs/
+.pytest_cache/
