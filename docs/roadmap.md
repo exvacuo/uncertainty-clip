@@ -8,23 +8,19 @@ for commands and the fixed image-disjoint split protocol.
 
 ## Establish the GPU budget
 
-Run the training-time benchmark on the intended GPU and storage for ViT-B/32,
-ViT-B/16, and RN50. Record throughput, memory, batch size, precision, and device.
-Identify a feasible batch size before launching the pilot. The benchmark
-estimates training time; it does not measure retrieval quality or convergence.
+Use OpenCLIP's training logs on the intended GPU to measure throughput and check
+memory use for ViT-B/32, ViT-B/16 and RN50. Record batch size, precision and device.
+Identify a feasible batch size before launching a full run.
 
 Exact university GPU allocation and job-submission requirements still need to
 be established with Matias.
 
 ## Train and select the baseline
 
-Run the ViT-B/32 pilot and compare initial random-model retrieval with trained
-retrieval on the validation split. Check finite loss, skipped updates,
+Run ViT-B/32 and inspect OpenCLIP's validation retrieval metrics. Check finite loss, skipped updates,
 overfitting, throughput, memory, and checkpoint/resume behavior on CUDA.
 
-Choose training duration and learning rate using validation results. The
-five-epoch full-data configuration is a starting recipe, not a claim that the
-model will converge in five epochs.
+Choose training duration and learning rate using validation results. The default three-epoch recipe is a starting point, not evidence of convergence.
 
 If budget permits, compare ViT-B/16 and RN50 using identical splits, caption
 sampling, and retrieval candidate pools. Tune learning rates fairly and report

@@ -53,5 +53,11 @@ integrity error leaves the archive available for inspection; remove that archive
 to download it again.
 
 Downloads use the URLs published on the [official COCO download page](https://cocodataset.org/#download).
-The script prepares files only; training, calibration, and evaluation split
-manifests are a separate step described in [the training guide](../docs/training.md).
+After downloading, prepare all image-caption CSV files with the single preparation script:
+
+```bash
+uv run utilities/prepare_data.py
+```
+
+This writes `train.csv`, `validation.csv`, `calibration.csv` and `test.csv` in
+`data/openclip/`. Then run `uv run python -m uncertainty_clip.train`.

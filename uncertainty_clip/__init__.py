@@ -1,1 +1,1 @@
-"""CLIP trained from scratch on COCO, with reproducible retrieval evaluation."""
+"""Run OpenCLIP training on prepared COCO CSV files."""
