@@ -29,7 +29,7 @@ download those files beforehand and pass their local directory via `--tokenizer`
 
 ```bash
 screen -S clip-training
-uv run python scripts/train_models.py --epochs 100
+CUDA_VISIBLE_DEVICES=0 uv run python scripts/train_models.py --epochs 100
 ```
 
 The suite runs seeds 42, 43 and 44 sequentially, without dropout. Each member
@@ -40,7 +40,7 @@ the maximum. A stopped member finishes normally and the next member starts.
 For only one member:
 
 ```bash
-uv run python -m uncertainty_clip.train \
+CUDA_VISIBLE_DEVICES=0 uv run python -m uncertainty_clip.train \
   --epochs 100 --seed 42 --name baseline-42 --resume latest
 ```
 
@@ -64,6 +64,13 @@ the command to resume from the most recent checkpoint. CPU checks can use
 The production recipe supports a single GPU process; distributed contrastive
 negative gathering has not been configured.
 
+Choose one GPU assigned to you with `CUDA_VISIBLE_DEVICES` before starting
+Python; replace `0` in the commands as needed. If a scheduler already sets
+this variable to a single device, preserve that assignment. Multiple visible
+GPUs cause Trainer to enable DataParallel, whose gathering cannot concatenate
+CLIP's pairwise logits for unequal batch chunks. The entry point now rejects
+multiple visible GPUs immediately instead of failing during validation.
+
 ## Checkpoints and resume
 
 The default output directory is `runs/transformers-suite/baseline-<seed>/`.
@@ -77,6 +84,31 @@ patience as well as training progress. Already completed and early-stopped
 runs are skipped. Keep the full directory when moving machines and preserve
 training settings, dataset order, batch size and the original epoch limit.
 A new experiment needs a new run name or `CLIP_LOGS` directory.
+
+To investigate further training after early stopping, use the latest full
+checkpoint, a separate output directory, and `--reset-early-stopping`:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run python -m uncertainty_clip.train \
+  --seed 42 --name baseline-42 --epochs 100 \
+  --logs runs/transformers-continued \
+  --resume runs/transformers-single-gpu/baseline-42/checkpoint-21275 \
+  --reset-early-stopping --early-stopping-patience 30
+```
+
+Replace the checkpoint path with your actual latest checkpoint. This continues
+from the saved training epoch, not the exported best weights. It restores model,
+optimizer, scheduler and RNG state, but starts a fresh native early-stopping
+callback with the requested patience. The existing best validation loss remains
+the comparison target. Keep the original batch size and 100-epoch ceiling to
+preserve the schedule. Merely increasing patience without this flag can restore
+the old callback configuration from the checkpoint.
+
+Keep the original run directory: the continuation may reference its selected
+best checkpoint. Use a free assigned GPU or stop the other training job before
+starting a continuation on the same device. This is an explicitly revised
+experiment; retain the original results and apply any final revised recipe
+consistently across seeds.
 
 The previous trainer's checkpoints are incompatible with this implementation.
 Use this branch's new output directory and start fresh. Existing prepared CSVs

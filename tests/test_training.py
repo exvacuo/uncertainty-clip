@@ -88,6 +88,15 @@ class TrainingTests(unittest.TestCase):
         self.assertTrue(torch.equal(saved.visual_projection.weight, trainer.model.visual_projection.weight))
         self.assertTrue(list((self.root / "run").rglob("events.out.tfevents.*")))
 
+    def test_multiple_visible_gpus_fail_before_model_or_data_loading(self):
+        args = parse_args(self.arguments + ["--device", "cuda"])
+        with patch("torch.cuda.is_available", return_value=True), \
+                patch("torch.cuda.device_count", return_value=3), \
+                patch("uncertainty_clip.train.CLIPModel") as model:
+            with self.assertRaisesRegex(ValueError, "CUDA_VISIBLE_DEVICES"):
+                build_trainer(args)
+            model.assert_not_called()
+
     def test_native_early_stopping_restores_patience_and_best_on_resume(self):
         args = parse_args(self.arguments + ["--early-stopping-patience", "2",
                                              "--early-stopping-min-delta", "100"])
@@ -109,6 +118,25 @@ class TrainingTests(unittest.TestCase):
         with patch("uncertainty_clip.train.build_trainer") as build:
             main(self.arguments + ["--resume", "latest", "--early-stopping-patience", "2"])
             build.assert_not_called()
+
+        # Continue into a separate run with native callback restoration disabled;
+        # the original optimizer/scheduler progress must still be restored.
+        source = Path(get_last_checkpoint(str(self.root / "run")))
+        original_state = (source / "trainer_state.json").read_bytes()
+        main(self.arguments + ["--name", "continued", "--resume", str(source),
+                               "--reset-early-stopping", "--early-stopping-patience", "3",
+                               "--early-stopping-min-delta", "100"])
+        continued = Path(get_last_checkpoint(str(self.root / "continued")))
+        continuation = json.loads((continued / "trainer_state.json").read_text())
+        self.assertEqual(continuation["epoch"], 6)
+        self.assertEqual(continuation["global_step"], 12)
+        self.assertEqual(continuation["stateful_callbacks"]["EarlyStoppingCallback"]["attributes"]["early_stopping_patience_counter"], 3)
+        optimizer = torch.load(continued / "optimizer.pt", weights_only=True)
+        self.assertEqual({int(value["step"]) for value in optimizer["state"].values()}, {12})
+        scheduler = torch.load(continued / "scheduler.pt", weights_only=True)
+        self.assertEqual(scheduler["last_epoch"], 12)
+        self.assertEqual((source / "trainer_state.json").read_bytes(), original_state)
+        self.assertTrue((self.root / "continued" / "best" / "model.safetensors").exists())
 
     def test_entrypoint_exports_best_and_will_not_overwrite_a_run(self):
         arguments = self.arguments + ["--epochs", "1"]

@@ -83,11 +83,15 @@ def parse_args(arguments=None):
     parser.add_argument("--report-to", choices=("tensorboard", "none"), default="tensorboard")
     parser.add_argument("--early-stopping-patience", type=int, default=10)
     parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
+    parser.add_argument("--reset-early-stopping", action="store_true",
+                        help="Resume weights/optimizer/schedule with fresh native callback patience")
     args = parser.parse_args(arguments)
     if args.epochs < 1 or args.batch_size < 2 or args.early_stopping_patience < 1:
         parser.error("epochs and patience must be positive; batch size must be at least 2")
     if not np.isfinite(args.early_stopping_min_delta) or args.early_stopping_min_delta < 0:
         parser.error("minimum improvement must be finite and nonnegative")
+    if args.reset_early_stopping and not args.resume:
+        parser.error("--reset-early-stopping requires --resume")
     return args
 
 
@@ -96,6 +100,13 @@ def build_trainer(args):
         raise RuntimeError("CUDA is unavailable. For a CPU check, use --device cpu --precision fp32.")
     if int(os.environ.get("WORLD_SIZE", "1")) > 1:
         raise ValueError("This recipe supports one training process; distributed contrastive negatives are not configured.")
+    if args.device == "cuda" and torch.cuda.device_count() > 1:
+        raise ValueError(
+            "Multiple CUDA GPUs are visible. This CLIP recipe requires one visible GPU; "
+            "Trainer's automatic DataParallel cannot gather unequal pairwise-logit matrices. "
+            "Set CUDA_VISIBLE_DEVICES to one assigned GPU before starting Python, for example: "
+            "CUDA_VISIBLE_DEVICES=0 uv run python scripts/train_models.py"
+        )
     set_seed(args.seed)
     config = CLIPConfig.from_json_file(args.model_config) if args.model_config else CLIPConfig(
         text_config={"hidden_act": "gelu", "attention_dropout": 0.0},
@@ -120,7 +131,8 @@ def build_trainer(args):
         seed=args.seed, data_seed=args.seed, dataloader_num_workers=args.workers,
         eval_strategy="epoch", save_strategy="epoch", save_total_limit=2,
         load_best_model_at_end=True, metric_for_best_model="eval_loss", greater_is_better=False,
-        restore_callback_states_from_checkpoint=True, logging_steps=10, logging_first_step=True,
+        restore_callback_states_from_checkpoint=not args.reset_early_stopping,
+        logging_steps=10, logging_first_step=True,
         report_to=args.report_to,
         label_names=["input_ids"], remove_unused_columns=False,
     )
@@ -143,7 +155,8 @@ def main(arguments=None):
     if checkpoint:
         state = json.loads((Path(checkpoint) / "trainer_state.json").read_text())
         callback = state.get("stateful_callbacks", {}).get("EarlyStoppingCallback", {})
-        if state.get("epoch", 0) >= args.epochs or callback.get("attributes", {}).get("early_stopping_patience_counter", 0) >= args.early_stopping_patience:
+        patience_exhausted = callback.get("attributes", {}).get("early_stopping_patience_counter", 0) >= args.early_stopping_patience
+        if state.get("epoch", 0) >= args.epochs or (patience_exhausted and not args.reset_early_stopping):
             print(f"{args.name}: training already finished; best checkpoint: {state.get('best_model_checkpoint')}")
             return
     trainer = build_trainer(args)

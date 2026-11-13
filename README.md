@@ -38,13 +38,13 @@ custom COCO 2017 split, not the Karpathy retrieval benchmark.
 All three models, sequentially:
 
 ```bash
-uv run python scripts/train_models.py
+CUDA_VISIBLE_DEVICES=0 uv run python scripts/train_models.py
 ```
 
 One model, for up to 100 epochs:
 
 ```bash
-uv run python -m uncertainty_clip.train \
+CUDA_VISIBLE_DEVICES=0 uv run python -m uncertainty_clip.train \
   --seed 42 --name baseline-42 --epochs 100 --resume latest
 ```
 
@@ -76,6 +76,11 @@ Unlike the earlier trainer, this recipe includes the final partial training
 batch. The framework's initialization and optimizer grouping also differ, so
 this is a new experiment, not a numerically identical continuation.
 
+Set `CUDA_VISIBLE_DEVICES` to one GPU assigned to you (replace `0` as needed).
+Trainer otherwise enables DataParallel when multiple GPUs are visible; its
+output gathering is incompatible with CLIP's unequal pairwise-logit matrices.
+The entry point rejects this configuration before loading the model.
+
 The recipe supports one training process on one GPU, with CPU options for
 pipeline checks. Full GPU memory use, throughput and convergence still need
 validation. The old runtime estimates do not establish this trainer's speed.
@@ -95,6 +100,12 @@ early-stopped member is skipped when the suite is repeated. Keep the complete
 run directory and unchanged training settings when resuming. Use a new name or
 `CLIP_LOGS` directory for a different experiment. Checkpoints from the previous
 training implementation cannot be resumed by this Trainer.
+
+An intentional continuation after stopping can use `--reset-early-stopping`
+with `--resume` and a larger patience. This resets the native callback while
+preserving model and optimizer/scheduler progress. See the
+[continuation example](docs/training.md); keep the original run and use a
+separate output directory for the revised experiment.
 
 Validation logs include loss and image-to-text/text-to-image Recall@1, @5 and
 @10. Recall uses the entire validation candidate pool; loss uses in-batch
