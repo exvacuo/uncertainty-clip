@@ -1,4 +1,4 @@
-"""Prepare COCO 2017 CSVs for OpenCLIP before training."""
+"""Prepare image-caption CSVs for CLIP training."""
 
 import argparse
 from collections import defaultdict
@@ -9,7 +9,7 @@ import random
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--data-dir", type=Path, default=Path("data/coco"))
-parser.add_argument("--output", type=Path, default=Path("data/openclip"))
+parser.add_argument("--output", type=Path, default=Path("data/clip"))
 parser.add_argument("--validation-size", type=int, default=1000)
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)

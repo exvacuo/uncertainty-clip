@@ -1,1 +1,1 @@
-"""Run OpenCLIP training on prepared COCO CSV files."""
+"""Train randomly initialized CLIP models using Hugging Face Transformers."""

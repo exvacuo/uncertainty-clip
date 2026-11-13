@@ -60,4 +60,4 @@ uv run utilities/prepare_data.py
 ```
 
 This writes `train.csv`, `validation.csv` and `test.csv` in
-`data/openclip/`. Then run `uv run python -m uncertainty_clip.train`.
+`data/clip/`. Then run `uv run python -m uncertainty_clip.train`.

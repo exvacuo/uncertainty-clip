@@ -1,4 +1,4 @@
-"""Train the three no-dropout ensemble members with OpenCLIP's trainer."""
+"""Train three CLIP ensemble members sequentially using Transformers Trainer."""
 
 import os
 from pathlib import Path
@@ -9,7 +9,7 @@ import sys
 def main():
     common = [
         "--epochs", "100",
-        "--logs", os.environ.get("CLIP_LOGS", "runs/openclip-suite"),
+        "--logs", os.environ.get("CLIP_LOGS", "runs/transformers-suite"),
         "--resume", "latest",
         "--report-to", "tensorboard",
     ]

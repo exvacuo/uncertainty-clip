@@ -1,61 +1,39 @@
 # Research roadmap
 
-Study uncertainty estimation for CLIP predictions. Both image and text encoders
-must start from random weights. The current baseline is OpenCLIP 3.2.0's
-ViT-B/32 trained on COCO 2017. Implementation and CPU pipeline checks are
-complete; GPU experiments remain pending. See [the training guide](training.md)
-for commands and the fixed image-disjoint split protocol.
+Train three randomly initialized Transformers CLIP ViT-B/32 models on COCO
+2017 with seeds 42, 43 and 44, without dropout. Use native Trainer early
+stopping and select models using the 1,000-image validation split. The
+4,000-image test split is reserved for final evaluation. There is no separate
+calibration set.
 
-## Establish the GPU budget
+## GPU pilot
 
-Use OpenCLIP's training logs on the intended GPU to measure throughput and check
-memory use for ViT-B/32, ViT-B/16 and RN50. Record batch size, precision and device.
-Identify a feasible batch size before launching a full run.
+Measure memory, throughput and validation behavior on the workstation before
+committing the full budget. Check finite loss and updates in both towers,
+checkpoint resume and TensorBoard logging. Keep the epoch limit and other
+settings fixed when resuming so the cosine schedule remains consistent.
 
-Exact university GPU allocation and job-submission requirements still need to
-be established with Matias.
+The default learning rate, 20-step warmup, batch size 128, 100-epoch ceiling
+and patience 10 are starting settings, not evidence of convergence. Tune on
+validation only and record code revision, dependencies, seeds, data hashes,
+training exposure and GPU time. COCO is much smaller than the original CLIP
+training corpus; establish useful held-out retrieval before interpreting
+uncertainty scores.
 
-## Train and select the baseline
+## Ensemble experiments
 
-Run ViT-B/32 and inspect OpenCLIP's validation retrieval metrics. Check finite loss, skipped updates,
-overfitting, throughput, memory, and checkpoint/resume behavior on CUDA.
+After selecting the three trained models:
 
-Choose training duration and learning rate using validation results. The default three-epoch recipe is a starting point, not evidence of convergence.
+1. Define the prediction task and a fixed candidate pool.
+2. Evaluate retrieval and agreement across ensemble members.
+3. Compare predictive entropy, confidence and embedding variability.
+4. If fitting confidence calibration, use non-test data under an explicit
+   fitting protocol. Keep its temperature distinct from CLIP's trained logit scale.
+5. Evaluate on test only after fixing the recipe and uncertainty protocol.
 
-If budget permits, compare ViT-B/16 and RN50 using identical splits, caption
-sampling, and retrieval candidate pools. Tune learning rates fairly and report
-both training exposure and GPU time. Repeat promising configurations with
-multiple seeds. Stock RN50 and ViT models differ in text width and embedding
-dimension, so that comparison evaluates complete configurations. Isolating the
-image backbone would require matching those components.
+MC dropout is outside the current implementation scope. Any later dropout
+experiment needs an explicit choice of locations, rates and training and
+inference behavior.
 
-COCO is much smaller than the original CLIP training corpus. Establish useful
-held-out retrieval before relying on the model for uncertainty experiments.
-This is a custom COCO 2017 protocol, not the Karpathy retrieval benchmark.
-
-## Uncertainty experiments
-
-After selecting a trained baseline:
-
-1. Define the prediction task and fixed candidate pool. Retrieval and
-   prompt-based classification need distinct evaluation protocols.
-2. Measure maximum softmax probability and predictive entropy.
-3. If investigating temperature scaling, define a fitting protocol using
-   non-test data. Keep this temperature distinct from CLIP's learned training logit scale.
-4. Study prompt variation for the chosen classification task.
-5. Train independent models with different seeds for an ensemble comparison.
-6. Specify and train a dropout variant if investigating stochastic predictions.
-
-Calling `model.train()` alone does not define a dropout experiment. Specify
-locations, rates, and training procedure; for RN50, keep batch normalization
-in evaluation mode during stochastic inference.
-
-Keep test data out of model selection and any confidence calibration. Use the final test split only
-after the recipe and uncertainty protocol are fixed. Record configuration,
-software versions, source revision, seeds, data hashes, and checkpoint selection.
-
-## References
-
-- [Original CLIP paper](https://proceedings.mlr.press/v139/radford21a/radford21a.pdf).
-- [Pinned OpenCLIP release](https://github.com/mlfoundations/open_clip/releases/tag/v3.2.0).
-- [Archived CNN encoder review](archive/cnn-encoder-research.md).
+See [the training guide](training.md). Historical encoder research is retained
+in [the archive](archive/cnn-encoder-research.md).
