@@ -40,8 +40,8 @@ After selecting a trained baseline:
 1. Define the prediction task and fixed candidate pool. Retrieval and
    prompt-based classification need distinct evaluation protocols.
 2. Measure maximum softmax probability and predictive entropy.
-3. Fit temperature scaling on the reserved calibration images. Keep this
-   temperature distinct from CLIP's learned training logit scale.
+3. If investigating temperature scaling, define a fitting protocol using
+   non-test data. Keep this temperature distinct from CLIP's learned training logit scale.
 4. Study prompt variation for the chosen classification task.
 5. Train independent models with different seeds for an ensemble comparison.
 6. Specify and train a dropout variant if investigating stochastic predictions.
@@ -50,7 +50,7 @@ Calling `model.train()` alone does not define a dropout experiment. Specify
 locations, rates, and training procedure; for RN50, keep batch normalization
 in evaluation mode during stochastic inference.
 
-Keep calibration separate from model selection. Use the final test split only
+Keep test data out of model selection and any confidence calibration. Use the final test split only
 after the recipe and uncertainty protocol are fixed. Record configuration,
 software versions, source revision, seeds, data hashes, and checkpoint selection.
 

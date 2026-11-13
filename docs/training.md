@@ -1,6 +1,36 @@
 # Training and evaluation
 
-There are two scripts for this workflow:
+For the three ensemble members without dropout, run from the repository root:
+
+```bash
+uv sync --locked
+uv run utilities/prepare_data.py
+uv run python scripts/train_models.py --epochs 100
+```
+
+The suite calls `uncertainty_clip.train` for each member; that wrapper supplies
+the shared settings to OpenCLIP's official trainer. It runs ViT-B/32
+sequentially with seeds 42, 43 and 44, using CUDA AMP
+and batch size 128. It does not launch a dropout model. Each run starts from
+random weights unless its latest checkpoint already exists under
+`runs/openclip-suite/baseline-<seed>/checkpoints/`. Repeating the command resumes
+each member toward 100 total epochs. Use a new `CLIP_LOGS` directory when
+changing training settings. Additional CLI flags are passed to OpenCLIP;
+keep the model, seed, run name and dropout settings unchanged for this ensemble.
+
+Download COCO first if needed (`uv run utilities/download_coco.py`). Regenerate
+the CSVs on the workstation because their image paths are absolute. Check CUDA
+before starting:
+
+```bash
+uv run python -c "import torch; print(torch.__version__, torch.version.cuda); assert torch.cuda.is_available(), 'CUDA is unavailable'; print(torch.cuda.get_device_name(0))"
+```
+
+Warmup is 20 optimizer steps, not epochs. The 100-epoch schedule and other
+hyperparameters are starting settings; full GPU performance and convergence
+still need validation.
+
+For individual runs, preparation and training use:
 
 - `utilities/prepare_data.py` prepares COCO as CSV files before training.
 - `uncertainty_clip/train.py` passes those files to OpenCLIP's official trainer.
@@ -10,8 +40,8 @@ uv run utilities/prepare_data.py
 uv run python -m uncertainty_clip.train
 ```
 
-Preparation uses every COCO training image. It reserves 1,000 validation,
-1,000 calibration and 3,000 test images from COCO val2017, using seed 42.
+Preparation uses every COCO training image. It reserves 1,000 validation
+and 4,000 test images from COCO val2017, using seed 42.
 It writes one fixed caption per image. CSV paths are absolute, so re-run
 preparation after moving the dataset. For another location:
 
@@ -33,7 +63,7 @@ uv run python -m uncertainty_clip.train --resume latest
 
 The official trainer evaluates validation each epoch and writes recall metrics
 and loss to `runs/vit-b32/checkpoints/results.jsonl`. It saves `epoch_1.pt`, etc.,
-and `epoch_latest.pt`. Select an epoch using validation before calibration/test.
+and `epoch_latest.pt`. Select an epoch using validation before final test evaluation.
 There is no custom evaluation or model implementation in this project.
 
 To evaluate using OpenCLIP directly:

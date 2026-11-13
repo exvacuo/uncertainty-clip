@@ -102,8 +102,7 @@ Similar captions attached to different images can still create false negatives.
 | --- | ---: | --- |
 | Training | 118,287 | Learn weights |
 | Validation | 1,000 | Select settings and checkpoints |
-| Calibration | 1,000 | Fit future uncertainty calibration |
-| Test | 3,000 | Final assessment after choices are fixed |
+| Test | 4,000 | Final assessment after choices are fixed |
 
 All captions for an image stay in its split. The manifest records annotation
 hashes so changed data is rejected. This is our custom COCO 2017 protocol.

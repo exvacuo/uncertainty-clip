@@ -59,5 +59,5 @@ After downloading, prepare all image-caption CSV files with the single preparati
 uv run utilities/prepare_data.py
 ```
 
-This writes `train.csv`, `validation.csv`, `calibration.csv` and `test.csv` in
+This writes `train.csv`, `validation.csv` and `test.csv` in
 `data/openclip/`. Then run `uv run python -m uncertainty_clip.train`.

@@ -16,6 +16,7 @@ import torch
 
 
 
+
 class OfficialTrainingTests(unittest.TestCase):
     def test_export_official_training_resume_and_retrieval(self):
         torch.set_num_threads(1)
@@ -37,18 +38,21 @@ class OfficialTrainingTests(unittest.TestCase):
                 (data / "annotations" / f"captions_{source}2017.json").write_text(
                     json.dumps({"images": images, "annotations": captions}))
             csv_dir = root / "csv"
+            csv_dir.mkdir()
+            (csv_dir / "calibration.csv").write_text("obsolete split")
             prepare = Path(__file__).resolve().parents[1] / "utilities" / "prepare_data.py"
             command = [sys.executable, str(prepare), "--data-dir", str(data), "--output", str(csv_dir),
-                       "--validation-size", "2", "--calibration-size", "2"]
+                       "--validation-size", "2"]
             subprocess.run(command, check=True)
+            self.assertFalse((csv_dir / "calibration.csv").exists())
             first_bytes = (csv_dir / "train.csv").read_bytes()
             subprocess.run(command, check=True)
             self.assertEqual(first_bytes, (csv_dir / "train.csv").read_bytes())
             held_out = []
-            for split in ("validation", "calibration", "test"):
+            for split, expected_size in (("validation", 2), ("test", 4)):
                 with (csv_dir / f"{split}.csv").open(newline="") as stream:
                     paths = {row["filepath"] for row in csv.DictReader(stream)}
-                self.assertEqual(len(paths), 2)
+                self.assertEqual(len(paths), expected_size)
                 held_out.append(paths)
             self.assertEqual(len(set.union(*held_out)), 6)
             # Tiny architecture, but real OpenCLIP towers, loss, loader, optimizer and loop.
